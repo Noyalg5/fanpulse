@@ -23,7 +23,7 @@ prisma/migrations/
 .DS_Store
 Thumbs.db
 
-# Claude Code local settings (may contain credentials)
+# Editor local settings (may contain credentials)
 .claude/
 
 # Uploads / CSV exports — never commit supporter data
