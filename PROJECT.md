@@ -1,4 +1,4 @@
-# FanPulse — Claude Code Context
+# FanPulse — Project Context
 
 ## What this project is
 
@@ -50,7 +50,7 @@ fanpulse/
 │   ├── scheduler.ts           # CLI: start background scheduler
 │   └── seed.ts                # CLI: npm run db:seed (mock data)
 ├── .env.example               # Copy to .env.local and fill in values
-└── CLAUDE.md                  # This file
+└── PROJECT.md                 # This file
 ```
 
 ---
@@ -133,7 +133,7 @@ npm run db:studio    # Opens Prisma Studio in your browser
 
 ## What still needs building
 
-The following features are scaffolded but not yet implemented — good tasks for Claude Code:
+The following features are scaffolded but not yet implemented — good next tasks:
 
 - **Dashboard** (`src/app/dashboard/`) — a Next.js page showing supporter segments, key metrics, and pipeline status. Use the `/api/status` endpoint as a data source.
 - **Campaign automation** — the `Campaign` and `CampaignRecipient` Prisma models exist; need an engine that matches supporters to campaign triggers and queues outbound emails via SendGrid.
