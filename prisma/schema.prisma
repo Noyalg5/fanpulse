@@ -1,0 +1,236 @@
+// FanPulse — Prisma Schema
+// Supporter Intelligence & Automated Engagement Platform
+// Falkirk FC / Heriot-Watt University KTP Project
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// MULTI-TENANCY: Club
+// ─────────────────────────────────────────────
+
+model Club {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  logoUrl       String?
+  primaryColour String   @default("#1a237e")
+  createdAt     DateTime @default(now())
+
+  supporters    Supporter[]
+  memberships   Membership[]
+  events        SupporterEvent[]
+  campaigns     Campaign[]
+  ingestionLogs IngestionLog[]
+  sourceConfigs DataSourceConfig[]
+}
+
+// ─────────────────────────────────────────────
+// CORE: Unified Supporter Profile
+// ─────────────────────────────────────────────
+
+model Supporter {
+  id      String @id @default(cuid())
+  clubId  String
+  club    Club   @relation(fields: [clubId], references: [id])
+
+  email       String
+  firstName   String?
+  lastName    String?
+  phone       String?
+  postcode    String?
+  dateOfBirth DateTime?
+  gender      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Computed engagement metrics (updated by enrichment jobs)
+  engagementScore Float  @default(0)  // 0–100
+  lifetimeValue   Float  @default(0)  // Total spend (£)
+  churnRisk       Float  @default(0)  // 0–1 probability of lapsing
+  recencyScore    Float  @default(0)  // Days since last interaction (normalised)
+  frequencyScore  Float  @default(0)  // Interactions per season (normalised)
+  monetaryScore   Float  @default(0)  // Spend normalised across cohort
+
+  // RFM Segment (auto-assigned by enrichment pipeline)
+  segment     String?
+  segmentedAt DateTime?
+
+  // Consent & GDPR
+  emailConsent   Boolean  @default(false)
+  smsConsent     Boolean  @default(false)
+  consentDate    DateTime?
+  consentSource  String?
+
+  // External IDs — links this supporter to source systems
+  externalIds Json @default("{}")
+
+  // Relations
+  events       SupporterEvent[]
+  memberships  Membership[]
+  campaigns    CampaignRecipient[]
+
+  @@unique([clubId, email])   // email unique per club
+  @@index([clubId])
+  @@index([segment])
+  @@index([engagementScore])
+  @@index([churnRisk])
+}
+
+// ─────────────────────────────────────────────
+// EVENTS: Every supporter interaction
+// ─────────────────────────────────────────────
+
+model SupporterEvent {
+  id         String    @id @default(cuid())
+  clubId     String
+  club       Club      @relation(fields: [clubId], references: [id])
+  supporterId String
+  supporter  Supporter @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+
+  source    String
+  eventType String
+  eventDate DateTime
+  value     Float?
+  metadata  Json     @default("{}")
+
+  externalId        String?
+  source_externalId String? @unique
+
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+  @@index([supporterId])
+  @@index([source, eventType])
+  @@index([eventDate])
+}
+
+// ─────────────────────────────────────────────
+// MEMBERSHIPS: Season tickets & club memberships
+// ─────────────────────────────────────────────
+
+model Membership {
+  id          String    @id @default(cuid())
+  clubId      String
+  club        Club      @relation(fields: [clubId], references: [id])
+  supporterId String
+  supporter   Supporter @relation(fields: [supporterId], references: [id], onDelete: Cascade)
+
+  type        String
+  status      String
+  tier        String?
+  startDate   DateTime
+  endDate     DateTime?
+  renewalDate DateTime?
+  pricePaid   Float?
+
+  externalId String? @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clubId])
+  @@index([supporterId])
+  @@index([type, status])
+}
+
+// ─────────────────────────────────────────────
+// PIPELINE: Ingestion logging & monitoring
+// ─────────────────────────────────────────────
+
+model IngestionLog {
+  id     String @id @default(cuid())
+  clubId String
+  club   Club   @relation(fields: [clubId], references: [id])
+
+  source String
+  status String @default("running")
+
+  startedAt   DateTime @default(now())
+  completedAt DateTime?
+
+  recordsProcessed Int @default(0)
+  recordsCreated   Int @default(0)
+  recordsUpdated   Int @default(0)
+  recordsFailed    Int @default(0)
+
+  errorMessage String?
+  metadata     Json @default("{}")
+
+  createdAt DateTime @default(now())
+
+  @@index([clubId])
+  @@index([source])
+  @@index([status])
+  @@index([startedAt])
+}
+
+// ─────────────────────────────────────────────
+// CONFIG: Per-source pipeline configuration
+// ─────────────────────────────────────────────
+
+model DataSourceConfig {
+  id     String @id @default(cuid())
+  clubId String
+  club   Club   @relation(fields: [clubId], references: [id])
+
+  source        String
+  enabled       Boolean  @default(true)
+  syncFrequency String   @default("daily")
+  lastSyncAt    DateTime?
+  nextSyncAt    DateTime?
+  config        Json     @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([clubId, source])  // source unique per club
+  @@index([clubId])
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGNS: Outbound engagement tracking
+// ─────────────────────────────────────────────
+
+model Campaign {
+  id     String @id @default(cuid())
+  clubId String
+  club   Club   @relation(fields: [clubId], references: [id])
+
+  name        String
+  description String?
+  channel     String
+  type        String
+  triggerConfig Json?
+  status    String   @default("draft")
+  sentAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipients CampaignRecipient[]
+
+  @@index([clubId])
+}
+
+model CampaignRecipient {
+  id          String   @id @default(cuid())
+  campaignId  String
+  campaign    Campaign  @relation(fields: [campaignId], references: [id])
+  supporterId String
+  supporter   Supporter @relation(fields: [supporterId], references: [id])
+
+  status    String   @default("pending")
+  sentAt    DateTime?
+  openedAt  DateTime?
+  clickedAt DateTime?
+
+  @@unique([campaignId, supporterId])
+  @@index([campaignId])
+  @@index([supporterId])
+}

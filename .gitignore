@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+.next/
+out/
+dist/
+
+# Prisma
+prisma/migrations/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code local settings (may contain credentials)
+.claude/
+
+# Uploads / CSV exports — never commit supporter data
+/tmp/
+*.csv
+.vercel

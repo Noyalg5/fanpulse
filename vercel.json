@@ -1,0 +1,20 @@
+{
+  "crons": [
+    {
+      "path": "/api/sync",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/enrich",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/campaigns/evaluate",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/campaigns/send",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
